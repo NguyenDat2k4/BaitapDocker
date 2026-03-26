@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Demo Docker Spring Boot Project
 
 Dự án này là một ví dụ đơn giản về ứng dụng Spring Boot chạy với Docker, sử dụng **Java 17**.
@@ -70,3 +71,6 @@ Bạn sẽ thấy giao diện **Dark Mode & Glassmorphism** hiện đại hiển
 - **Cổng mặc định**: 8080
 - **Dockerfile**: Sử dụng Multi-stage build để tối ưu hóa kích thước image.
 - **Java Version**: 17 (Eclipse Temurin)
+=======
+thử nghiệm đọc
+>>>>>>> bdb266c7f45b60d7af8afb02f4083f21cd41146d
