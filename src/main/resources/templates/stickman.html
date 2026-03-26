@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stickman Battle | Final Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --p1-color: #3b82f6;
+            --p2-color: #ef4444;
+            --mana-color: #facc15;
+            --text: #f1f5f9;
+            --panel: rgba(30, 41, 59, 0.9);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; user-select: none; }
+
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            color: var(--text);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; overflow: hidden;
+            padding: 20px;
+        }
+
+        #main-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            max-width: 1400px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .side-guide {
+            width: 280px;
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .guide-title { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 15px; border-bottom: 2px solid var(--border); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
+        .player-guide { margin-bottom: 20px; }
+        .player-guide h3 { font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .guide-item { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; color: #94a3b8; }
+        .key { background: #334155; color: #fff; padding: 2px 8px; border-radius: 6px; font-weight: 800; border-bottom: 2px solid #1e293b; font-family: monospace; }
+
+        #game-section { position: relative; }
+
+        .hud {
+            width: 1000px; display: flex; justify-content: space-between; margin-bottom: 15px;
+        }
+
+        .player-info { width: 480px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 20px; border: 1px solid var(--border); }
+        .label { font-size: 0.8rem; font-weight: 800; color: #94a3b8; letter-spacing: 2px; margin-bottom: 10px; }
+        .bar-container { height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden; margin-bottom: 8px; position: relative; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.3s cubic-bezier(0,0.5,0.5,1); }
+        .hp-p1 { background: linear-gradient(to right, #2563eb, #60a5fa); box-shadow: 0 0 15px rgba(59,130,246,0.3); }
+        .hp-p2 { background: linear-gradient(to left, #dc2626, #f87171); box-shadow: 0 0 15px rgba(239,68,68,0.3); }
+        .mana-bar { background: linear-gradient(to right, #eab308, #fef08a); height: 6px; }
+
+        #game-canvas {
+            background: rgba(0,0,0,0.5); border-bottom: 12px solid #1e293b;
+            box-shadow: 0 0 100px rgba(0,0,0,0.8); display: block; border-radius: 12px;
+        }
+
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); display: flex;
+            flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+            backdrop-filter: blur(10px); border-radius: 12px;
+        }
+
+        .btn {
+            padding: 1.2rem 3rem; background: #4f46e5; color: white; border: none;
+            border-radius: 18px; font-weight: 800; cursor: pointer; transition: all 0.3s;
+            text-decoration: none; margin: 0.5rem; font-size: 1.1rem; min-width: 250px;
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 20px 40px rgba(79, 70, 229, 0.5); filter: brightness(1.1); }
+        .btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+
+        #title-main { font-size: 1.5rem; margin-bottom: 2rem; color: #475569; letter-spacing: 6px; text-transform: uppercase; font-weight: 800; }
+    </style>
+</head>
+<body>
+
+    <div id="title-main">Stickman Battle Arena</div>
+
+    <div id="main-layout">
+        <!-- Sidebar Guide -->
+        <div class="side-guide">
+            <div class="guide-title">Hướng dẫn chơi</div>
+            
+            <div class="player-guide">
+                <h3 style="color: var(--p1-color);">● PLAYER 1 (BLUE)</h3>
+                <div class="guide-item"><span>Di chuyển</span><span class="key">W A S D</span></div>
+                <div class="guide-item"><span>Tấn công</span><span class="key">F</span></div>
+                <div class="guide-item"><span>Chiêu 1 (Lướt)</span><span class="key">G</span></div>
+                <div class="guide-item"><span>Chiêu 2 (Chưởng)</span><span class="key">E</span></div>
+            </div>
+
+            <div class="player-guide">
+                <h3 style="color: var(--p2-color);">● PLAYER 2 (RED)</h3>
+                <div class="guide-item"><span>Di chuyển</span><span class="key">↑ ← ↓ →</span></div>
+                <div class="guide-item"><span>Tấn công</span><span class="key">L</span></div>
+                <div class="guide-item"><span>Chiêu 1 (Lướt)</span><span class="key">M</span></div>
+                <div class="guide-item"><span>Chiêu 2 (Chưởng)</span><span class="key">K</span></div>
+            </div>
+
+            <div class="guide-title" style="margin-top: 10px; font-size: 0.8rem;">Cơ chế Battle</div>
+            <div class="guide-item" style="font-size: 0.75rem;">- Dash tốn 25 Nội lực.</div>
+            <div class="guide-item" style="font-size: 0.75rem;">- Fireball tốn 40 Nội lực.</div>
+            <div class="guide-item" style="font-size: 0.75rem;">- Nội lực hồi phục theo thời gian.</div>
+            <div class="guide-item" style="font-size: 0.75rem;">- Game kết thúc khi HP = 0.</div>
+
+            <a href="/" class="btn btn-secondary" style="min-width: 100%; margin-top: 20px; font-size: 0.9rem; padding: 0.8rem;">VỀ TRANG CHỦ</a>
+        </div>
+
+        <div id="game-section">
+            <div class="hud">
+                <div id="p1-info" class="player-info">
+                    <div class="label">P1: BLUE</div>
+                    <div class="bar-container"><div id="p1-hp" class="bar-fill hp-p1"></div></div>
+                    <div class="bar-container" style="height: 6px;"><div id="p1-mana" class="bar-fill mana-bar"></div></div>
+                </div>
+                <div id="p2-info" class="player-info" style="text-align: right;">
+                    <div class="label">P2: RED / BOT</div>
+                    <div class="bar-container"><div id="p2-hp" class="bar-fill hp-p2"></div></div>
+                    <div class="bar-container" style="height: 6px;"><div id="p2-mana" class="bar-fill mana-bar" style="float: right;"></div></div>
+                </div>
+            </div>
+
+            <canvas id="game-canvas" width="1000" height="500"></canvas>
+
+            <!-- Overlays -->
+            <div id="menu" class="overlay">
+                <h1 style="font-size: 4rem; margin-bottom: 2rem; letter-spacing: 4px;">CHỌN CHẾ ĐỘ</h1>
+                <button class="btn" onclick="startGame('ai')">1 NGƯỜI (VS MÁY)</button>
+                <button class="btn" onclick="startGame('pvp')">2 NGƯỜI (PVP)</button>
+            </div>
+
+            <div id="game-over" class="overlay" style="display: none;">
+                <h1 id="winner-text" style="font-size: 5rem; font-weight: 900; margin-bottom: 1.5rem;">P1 WINS!</h1>
+                <button class="btn" onclick="location.reload()">CHƠI LẠI</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const menu = document.getElementById('menu');
+        const gameOverOverlay = document.getElementById('game-over');
+        const winnerText = document.getElementById('winner-text');
+        
+        const gravity = 0.8;
+        const groundY = 460;
+        let isStarted = false;
+        let shake = 0;
+        let particles = [];
+        let projectiles = [];
+
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+                this.color = color; this.size = size; this.life = life; this.maxLife = life;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.life--; }
+            draw() { ctx.globalAlpha = this.life / this.maxLife; ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.size, this.size); ctx.globalAlpha = 1; }
+        }
+
+        class Player {
+            constructor(x, y, color, controls, id) {
+                this.id = id; this.x = x; this.y = y; this.color = color; this.controls = controls;
+                this.w = 50; this.h = 90; this.velX = 0; this.velY = 0; this.hp = 100; this.mana = 100;
+                this.facing = id === 1 ? 1 : -1; this.isJumping = false; this.isAttacking = false;
+                this.attackCd = 0; this.dashCd = 0; this.skillCd = 0; this.flash = 0;
+                this.keys = {}; this.isBot = false;
+            }
+
+            draw() {
+                ctx.save();
+                let scaleY = 1; if (this.isJumping) scaleY = 1.1;
+                ctx.translate(this.x + this.w/2, this.y + this.h/2); ctx.scale(this.facing, scaleY);
+                const t = Date.now() / 100; const walk = Math.abs(this.velX) > 1 ? Math.sin(t*2) * 20 : 0;
+                ctx.strokeStyle = this.flash > 0 ? '#fff' : this.color; if (this.flash > 0) this.flash--;
+                ctx.lineWidth = 6; ctx.lineCap = 'round';
+                
+                // Stickman shape
+                ctx.beginPath(); ctx.arc(0, -35, 12, 0, Math.PI*2); ctx.stroke(); // Head
+                ctx.beginPath(); ctx.moveTo(0, -23); ctx.lineTo(0, 15); ctx.stroke(); // Body
+                if (this.isAttacking) {
+                    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(45, -10); ctx.stroke();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(40, -20); ctx.lineTo(40, 0); ctx.stroke();
+                } else {
+                    ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(25, 10 + walk/4);
+                    ctx.moveTo(0, -10); ctx.lineTo(-25, 10 - walk/4); ctx.stroke();
+                }
+                ctx.strokeStyle = this.flash > 0 ? '#fff' : this.color; ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(25 + walk, 45);
+                ctx.moveTo(0, 15); ctx.lineTo(-25 - walk, 45); ctx.stroke(); // Legs
+                ctx.restore();
+            }
+
+            update() {
+                if (this.attackCd > 0) this.attackCd--; if (this.dashCd > 0) this.dashCd--; if (this.skillCd > 0) this.skillCd--;
+                if (this.mana < 100) this.mana += 0.3;
+
+                if (!this.isBot) {
+                    if (this.keys[this.controls.l]) { this.velX = -5; this.facing = -1; }
+                    else if (this.keys[this.controls.r]) { this.velX = 5; this.facing = 1; }
+                    else { this.velX *= 0.8; }
+                    if (this.keys[this.controls.j] && !this.isJumping) { this.velY = -14; this.isJumping = true; }
+                    if (this.keys[this.controls.a] && this.attackCd === 0) this.attack();
+                    if (this.keys[this.controls.dash] && this.dashCd === 0 && this.mana >= 25) this.dash();
+                    if (this.keys[this.controls.skill] && this.skillCd === 0 && this.mana >= 40) this.fireball();
+                } else { this.updateAI(); }
+
+                this.x += this.velX; this.y += this.velY;
+                if (this.y + this.h < groundY) this.velY += gravity;
+                else { this.y = groundY - this.h; this.velY = 0; this.isJumping = false; }
+                this.x = Math.max(0, Math.min(canvas.width - this.w, this.x));
+            }
+
+            updateAI() {
+                const dist = p1.x - this.x; const absDist = Math.abs(dist);
+                if (absDist > 150) { this.velX = dist > 0 ? 4 : -4; this.facing = dist > 0 ? 1 : -1; }
+                else if (absDist < 70) { this.velX = dist > 0 ? -4 : 4; this.facing = dist > 0 ? 1 : -1; }
+                else { this.velX *= 0.8; }
+                if (absDist < 100 && this.attackCd === 0 && Math.random() < 0.1) this.attack();
+                if (absDist > 250 && this.mana >= 40 && this.skillCd === 0 && Math.random() < 0.05) this.fireball();
+                if (absDist < 50 && this.dashCd === 0 && this.mana >= 25 && Math.random() < 0.05) this.dash();
+                if (p1.isJumping && Math.random() < 0.05) { this.velY = -14; this.isJumping = true; }
+            }
+
+            attack() { this.isAttacking = true; this.attackCd = 25; spawnParticles(this.x + this.facing*60, this.y + 30, this.color, 5); setTimeout(() => this.isAttacking = false, 150); }
+            dash() { this.mana -= 25; this.dashCd = 40; this.velX = this.facing * 20; spawnParticles(this.x, this.y + 45, '#fff', 10); }
+            fireball() { this.mana -= 40; this.skillCd = 60; projectiles.push({ x: this.x + this.facing*50, y: this.y + 40, vx: this.facing*15, owner: this, color: this.color }); }
+        }
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) particles.push(new Particle(x, y, (Math.random()-0.5)*10, (Math.random()-0.5)*10, color, Math.random()*5, 20 + Math.random()*20));
+        }
+
+        const p1 = new Player(100, 300, '#3b82f6', { l:'a', r:'d', j:'w', a:'f', dash:'g', skill:'e' }, 1);
+        const p2 = new Player(800, 300, '#ef4444', { l:'ArrowLeft', r:'ArrowRight', j:'ArrowUp', a:'l', dash:'m', skill:'k' }, 2);
+
+        function startGame(mode) { p2.isBot = (mode === 'ai'); menu.style.display = 'none'; isStarted = true; loop(); }
+        window.addEventListener('keydown', e => { p1.keys[e.key] = true; p2.keys[e.key] = true; });
+        window.addEventListener('keyup', e => { p1.keys[e.key] = false; p2.keys[e.key] = false; });
+
+        function takeDamage(player, amount, heavy = false) {
+            player.hp = Math.max(0, player.hp - amount); player.flash = 5; player.velX = (player.id === 1 ? -1 : 1) * (heavy ? 22 : 12);
+            shake = heavy ? 15 : 5; spawnParticles(player.x + 25, player.y + 45, '#fff', 15);
+            if (player.hp === 0) endGame();
+        }
+
+        function endGame() { isStarted = false; winnerText.innerText = p1.hp > 0 ? 'PLAYER 1 THẮNG!' : 'PLAYER 2 THẮNG!'; winnerText.className = p1.hp > 0 ? 'p1-win' : 'p2-win'; gameOverOverlay.style.display = 'flex'; }
+
+        function loop() {
+            if (!isStarted) return;
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0, 1000, 500); ctx.save();
+            if (shake > 0) { ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake); shake *= 0.9; }
+
+            projectiles.forEach((p, i) => {
+                p.x += p.vx; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
+                const target = p.owner === p1 ? p2 : p1;
+                if (Math.abs(p.x - target.x - 25) < 30 && Math.abs(p.y - target.y - 45) < 50) { takeDamage(target, 20, true); projectiles.splice(i, 1); }
+                if (p.x < 0 || p.x > 1000) projectiles.splice(i, 1);
+            });
+
+            if (p1.isAttacking && Math.abs(p1.x - p2.x) < 85 && Math.abs(p1.y - p2.y) < 60) { takeDamage(p2, 7); p1.isAttacking = false; }
+            if (p2.isAttacking && Math.abs(p2.x - p1.x) < 85 && Math.abs(p2.y - p1.y) < 60) { takeDamage(p1, 7); p2.isAttacking = false; }
+
+            p1.update(); p2.update();
+            particles.forEach((p, i) => { p.update(); p.draw(); if (p.life <= 0) particles.splice(i, 1); });
+            p1.draw(); p2.draw(); ctx.restore();
+
+            document.getElementById('p1-hp').style.width = p1.hp + '%';
+            document.getElementById('p2-hp').style.width = p2.hp + '%';
+            document.getElementById('p1-mana').style.width = p1.mana + '%';
+            document.getElementById('p2-mana').style.width = p2.mana + '%';
+
+            requestAnimationFrame(loop);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thủ Môn Siêu Cấp | Pro Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Bungee&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --grass-light: #4ade80;
+            --grass-dark: #22c55e;
+            --goal-frame: #78350f;
+            --ui-bg: rgba(0, 0, 0, 0.6);
+            --text: #ffffff;
+            --accent: #facc15;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: #1a2e1a;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            border: 8px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            background: var(--grass-dark);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* UI Overlays */
+        .top-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .scoreboard {
+            background: var(--ui-bg);
+            padding: 10px 25px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            font-family: 'Bungee', cursive;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+        }
+
+        .ball-counter {
+            background: var(--ui-bg);
+            padding: 8px 15px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.2rem;
+            pointer-events: auto;
+        }
+
+        .ball-icon {
+            width: 30px;
+            height: 30px;
+            background: white;
+            border-radius: 50%;
+            border: 2px solid black;
+            position: relative;
+        }
+
+        .ball-icon::after {
+            content: '⚽';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+        }
+
+        .timer-icon {
+            background: var(--accent);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border: 3px solid white;
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+            pointer-events: auto;
+        }
+
+        .pause-btn {
+            background: rgba(255, 255, 255, 0.9);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-size: 1.5rem;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.2s;
+        }
+
+        .pause-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Game Over / Start Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .play-now-btn {
+            background: #22c55e;
+            color: white;
+            padding: 2rem;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            font-family: 'Bungee', cursive;
+            font-size: 2.2rem;
+            border: 10px solid #cbd5e1;
+            cursor: pointer;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .play-now-btn:hover {
+            transform: scale(1.05) rotate(5deg);
+            background: #16a34a;
+        }
+
+        .message-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Bungee', cursive;
+            font-size: 6rem;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.4s;
+        }
+
+        .save {
+            color: #22c55e;
+            text-shadow: 0 0 20px #fff;
+        }
+
+        .goal {
+            color: #ef4444;
+            text-shadow: 0 0 20px #fff;
+        }
+
+        .hint {
+            margin-top: 20px;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container" id="container">
+        <div class="top-ui">
+            <div class="timer-icon">🕒</div>
+            <div style="display: flex; gap: 20px;">
+                <div class="scoreboard">
+                    <span id="score">0</span>
+                    <span style="color: var(--accent)">:</span>
+                    <span id="opponentScore">0</span>
+                </div>
+                <div class="ball-counter">
+                    <div class="ball-icon"></div>
+                    <span id="ballsLeft">10</span>
+                </div>
+            </div>
+            <div class="pause-btn" onclick="togglePause()">⏸</div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+        <div id="game-message" class="message-popup">SAVE!</div>
+
+        <!-- Start Overlay -->
+        <div id="startOverlay" class="overlay">
+            <h1 style="font-family: 'Bungee', cursive; font-size: 3rem; margin-bottom: 2rem; color: #fff;">THỦ MÔN ĐIÊN
+                CUỒNG</h1>
+            <button class="play-now-btn" onclick="startGame()">CHƠI LUÔN</button>
+            <a href="/" style="color: white; margin-top: 20px; text-decoration: none; opacity: 0.7;">Về Trang Chủ</a>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="gameOverOverlay" class="overlay" style="display: none;">
+            <h2 id="resultText"
+                style="font-family: 'Bungee', cursive; font-size: 3rem; margin-bottom: 1rem; color: #fff;">KẾT THÚC!
+            </h2>
+            <p style="font-size: 1.5rem; margin-bottom: 2rem;">Điểm của bạn: <span id="finalScore">0</span></p>
+            <button class="play-now-btn" onclick="startGame()">LÀM LẠI</button>
+            <a href="/" style="color: white; margin-top: 20px; text-decoration: none; opacity: 0.7;">Thoát</a>
+        </div>
+    </div>
+
+    <div class="hint">Sử dụng chuột trái/phải hoặc phím AD để di chuyển thủ môn</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const oppScoreEl = document.getElementById('opponentScore');
+        const ballsLeftEl = document.getElementById('ballsLeft');
+        const startOverlay = document.getElementById('startOverlay');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const gameMessage = document.getElementById('game-message');
+
+        // Game State
+        let gameActive = false;
+        let paused = false;
+        let score = 0;
+        let oppScore = 0;
+        let ballsLeft = 10;
+        let mouseX = 400;
+
+        // Entities
+        let ball = { x: 400, y: 350, z: 0, r: 15, dx: 0, dy: 0, dz: 0, state: 'idle' };
+        let keeper = { x: 400, y: 180, w: 100, h: 50, color: '#3b82f6' };
+
+        // Dimensions
+        const GOAL_X = 200;
+        const GOAL_Y = 100;
+        const GOAL_W = 400;
+        const GOAL_H = 150;
+
+        function startGame() {
+            startOverlay.style.display = 'none';
+            gameOverOverlay.style.display = 'none';
+            gameActive = true;
+            score = 0;
+            oppScore = 0;
+            ballsLeft = 10;
+            updateUI();
+            resetBall();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetBall() {
+            ball.x = 400;
+            ball.y = 450;
+            ball.z = 0;
+            ball.dx = 0;
+            ball.dy = 0;
+            ball.dz = 0;
+            ball.state = 'ready';
+
+            setTimeout(() => {
+                if (gameActive && ball.state === 'ready') shootBall();
+            }, 1000);
+        }
+
+        function shootBall() {
+            ball.state = 'flying';
+            // Random target in goal area
+            const targetX = GOAL_X + Math.random() * GOAL_W;
+            const targetY = GOAL_Y + Math.random() * GOAL_H;
+
+            const dist = 300; // y distance
+            const speed = 8 + (score * 0.5);
+
+            ball.dx = (targetX - ball.x) / (dist / speed);
+            ball.dy = -speed;
+            ball.dz = 2; // Arcing effect
+        }
+
+        function gameLoop() {
+            if (!gameActive || paused) return;
+
+            update();
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            // Keeper movement (smooth follow)
+            const targetX = mouseX;
+            keeper.x += (targetX - keeper.x) * 0.2;
+            if (keeper.x < GOAL_X) keeper.x = GOAL_X;
+            if (keeper.x > GOAL_X + GOAL_W) keeper.x = GOAL_X + GOAL_W;
+
+            if (ball.state === 'flying') {
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+                ball.z += ball.dz;
+                if (ball.z > 20) ball.dz = -2; // Fall down
+
+                // Collision Detection with Keeper
+                const dx = ball.x - keeper.x;
+                const dy = ball.y - (keeper.y + ball.z);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 50 && ball.y < keeper.y + 20) {
+                    handleSave();
+                } else if (ball.y < GOAL_Y) {
+                    // Check if Goal
+                    if (ball.x > GOAL_X && ball.x < GOAL_X + GOAL_W) {
+                        handleGoal();
+                    } else {
+                        // Missed shot
+                        handleSave(); // Counting as save for game flow simplicity or just reset
+                    }
+                }
+            }
+        }
+
+        function handleSave() {
+            ball.state = 'saved';
+            score++;
+            ballsLeft--;
+            updateUI();
+            showPopup('SAVE!', 'save');
+            checkEndGame();
+        }
+
+        function handleGoal() {
+            ball.state = 'goal';
+            oppScore++;
+            ballsLeft--;
+            updateUI();
+            showPopup('GOAL!', 'goal');
+            checkEndGame();
+        }
+
+        function checkEndGame() {
+            if (ballsLeft <= 0) {
+                setTimeout(() => {
+                    gameActive = false;
+                    document.getElementById('finalScore').textContent = score;
+                    gameOverOverlay.style.display = 'flex';
+                    if (score > oppScore) {
+                        document.getElementById('resultText').textContent = "CHIẾN THẮNG!";
+                        document.getElementById('resultText').style.color = "#facc15";
+                    } else {
+                        document.getElementById('resultText').textContent = "THẤT BẠI!";
+                        document.getElementById('resultText').style.color = "#ef4444";
+                    }
+                }, 1000);
+            } else {
+                setTimeout(resetBall, 1500);
+            }
+        }
+
+        function showPopup(text, type) {
+            gameMessage.textContent = text;
+            gameMessage.className = `message-popup ${type}`;
+            gameMessage.style.opacity = '1';
+            gameMessage.style.transform = 'translate(-50%, -50%) scale(1.2)';
+            setTimeout(() => {
+                gameMessage.style.opacity = '0';
+                gameMessage.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 800);
+        }
+
+        function updateUI() {
+            scoreEl.textContent = score;
+            oppScoreEl.textContent = oppScore;
+            ballsLeftEl.textContent = ballsLeft;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawField();
+            drawCrowd();
+            drawGoal();
+            drawKeeper();
+            drawBall();
+        }
+
+        function drawField() {
+            // Mow grass effect
+            for (let i = 0; i < 10; i++) {
+                ctx.fillStyle = i % 2 === 0 ? '#4ade80' : '#22c55e';
+                ctx.fillRect(0, i * 50, canvas.width, 50);
+            }
+
+            // White lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+            ctx.lineWidth = 4;
+            // Border
+            ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+            // Center line
+            ctx.beginPath(); ctx.moveTo(20, 300); ctx.lineTo(canvas.width - 20, 300); ctx.stroke();
+
+            // Penalty area
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(150, 400, 500, 100);
+
+            // Decoration: Green Bottle (as seen in screenshot)
+            const bx = 600, by = 350;
+            ctx.fillStyle = '#4ade80';
+            ctx.beginPath();
+            ctx.ellipse(bx, by, 25, 35, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(bx - 5, by - 45, 10, 15);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        function drawCrowd() {
+            // Simple cartoon crowd
+            ctx.fillStyle = '#1e3a1e';
+            ctx.fillRect(0, 0, canvas.width, 60);
+
+            for (let i = 0; i < 40; i++) {
+                ctx.fillStyle = `hsl(${(i * 137.5) % 360}, 50%, 40%)`;
+                ctx.beginPath();
+                ctx.arc(20 + i * 20, 40 + (i % 3) * 3, 10, 0, Math.PI * 2);
+                ctx.fill();
+                // Heads
+                ctx.fillStyle = '#ffdbac';
+                ctx.beginPath();
+                ctx.arc(20 + i * 20, 25 + (i % 3) * 3, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Wall / Banner
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 60, canvas.width, 30);
+            ctx.fillStyle = '#b91c1c';
+            ctx.font = 'italic bold 20px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('CRAZY KEEPER   CRAZY KEEPER   CRAZY KEEPER   CRAZY KEEPER', canvas.width / 2, 82);
+        }
+
+        function drawGoal() {
+            // Shadow under goal
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(GOAL_X - 10, GOAL_Y + GOAL_H - 5, GOAL_W + 20, 15);
+
+            // Posts
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 12;
+            ctx.lineJoin = 'round';
+            ctx.strokeRect(GOAL_X, GOAL_Y, GOAL_W, GOAL_H);
+
+            // Net
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1;
+            for (let i = GOAL_X; i <= GOAL_X + GOAL_W; i += 20) {
+                ctx.beginPath(); ctx.moveTo(i, GOAL_Y); ctx.lineTo(i, GOAL_Y + GOAL_H); ctx.stroke();
+            }
+            for (let i = GOAL_Y; i <= GOAL_Y + GOAL_H; i += 20) {
+                ctx.beginPath(); ctx.moveTo(GOAL_X, i); ctx.lineTo(GOAL_X + GOAL_W, i); ctx.stroke();
+            }
+        }
+
+        function drawKeeper() {
+            const kx = keeper.x;
+            const ky = keeper.y;
+
+            // Hair
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.ellipse(kx, ky - 75, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+            // Head
+            ctx.fillStyle = '#ffdbac';
+            ctx.beginPath(); ctx.arc(kx, ky - 65, 15, 0, Math.PI * 2); ctx.fill();
+
+            // Body (Jersey)
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.moveTo(kx - 35, ky - 50);
+            ctx.lineTo(kx + 35, ky - 50);
+            ctx.lineTo(kx + 25, ky);
+            ctx.lineTo(kx - 25, ky);
+            ctx.closePath();
+            ctx.fill();
+
+            // White part of jersey
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillRect(kx - 5, ky - 40, 10, 30);
+
+            // Pants
+            ctx.fillStyle = '#1d4ed8';
+            ctx.fillRect(kx - 25, ky, 50, 25);
+
+            // Arms
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            // Left arm
+            ctx.beginPath(); ctx.moveTo(kx - 35, ky - 45); ctx.lineTo(kx - 70, ky - 30); ctx.stroke();
+            // Right arm
+            ctx.beginPath(); ctx.moveTo(kx + 35, ky - 45); ctx.lineTo(kx + 70, ky - 30); ctx.stroke();
+
+            // Gloves (White with orange detail)
+            ctx.fillStyle = 'white';
+            ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(255,255,255,0.5)';
+            ctx.beginPath(); ctx.arc(kx - 75, ky - 30, 20, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(kx + 75, ky - 30, 20, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath(); ctx.arc(kx - 75, ky - 30, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(kx + 75, ky - 30, 10, 0, Math.PI * 2); ctx.fill();
+
+            // Number 1
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Bungee';
+            ctx.textAlign = 'center';
+            ctx.fillText('1', kx, ky - 10);
+        }
+
+        function drawBall() {
+            if (ball.state === 'idle') return;
+
+            // Ball shadow on ground
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(ball.x, ball.y, ball.r, ball.r / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ball
+            const bX = ball.x;
+            const bY = ball.y - ball.z;
+            const bR = ball.r + (ball.z / 10);
+
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(bX, bY, bR, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pattern
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bX - bR, bY); ctx.lineTo(bX + bR, bY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(bX, bY - bR); ctx.lineTo(bX, bY + bR);
+            ctx.stroke();
+        }
+
+        function togglePause() {
+            paused = !paused;
+            if (!paused) requestAnimationFrame(gameLoop);
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+        });
+
+        // Initialize display
+        draw();
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game | Neon Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --snake: #22c55e;
+            --food: #ef4444;
+            --text: #f1f5f9;
+            --accent: #4f46e5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, var(--snake), #86efac);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .canvas-container {
+            position: relative;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(79, 70, 229, 0.2);
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            z-index: 100;
+        }
+
+        .overlay h2 {
+            font-size: 3rem;
+            color: var(--food);
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            margin: 0.5rem;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            filter: brightness(1.2);
+            transform: scale(1.05);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls-hint {
+            margin-top: 1.5rem;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <h1>Rắn Săn Mồi Neon</h1>
+        <div class="stats">
+            <div>Score: <span id="score">0</span></div>
+            <div>High: <span id="highScore">0</span></div>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="gameOverOverlay" class="overlay">
+            <h2>GAME OVER</h2>
+            <button class="btn" onclick="resetGame()">Chơi lại</button>
+            <a href="/" class="btn btn-secondary">Trang chủ</a>
+            <a href="/watermelon" class="btn" style="background: #f43f5e">Sang Watermelon</a>
+        </div>
+    </div>
+
+    <div class="controls-hint">
+        Sử dụng phím <b>Mũi tên</b> hoặc <b>WASD</b> để di chuyển
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('highScore');
+        const overlay = document.getElementById('gameOverOverlay');
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let score = 0;
+        let highScore = localStorage.getItem('snakeHighScore') || 0;
+        highScoreElement.textContent = highScore;
+
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 5, y: 5};
+        let dx = 0;
+        let dy = 0;
+        let nextDx = 0;
+        let nextDy = 0;
+        let gameActive = false;
+        let gameLoop;
+        let speed = 100;
+
+        function drawGame() {
+            if (!gameActive) return;
+
+            advanceSnake();
+            if (checkGameOver()) { handleGameOver(); return; }
+            checkFoodCollision();
+            clearCanvas();
+            drawFood();
+            drawSnake();
+            gameLoop = setTimeout(drawGame, speed);
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#111';
+            for(let i=0; i<=canvas.width; i+=gridSize) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? '#4ade80' : '#22c55e';
+                ctx.beginPath();
+                ctx.roundRect(part.x * gridSize + 1, part.y * gridSize + 1, gridSize - 2, gridSize - 2, 4);
+                ctx.fill();
+            });
+        }
+
+        function advanceSnake() {
+            dx = nextDx; dy = nextDy;
+            snake.unshift({x: snake[0].x + dx, y: snake[0].y + dy});
+            snake.pop();
+        }
+
+        function drawFood() {
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, gridSize/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function checkFoodCollision() {
+            if (snake[0].x === food.x && snake[0].y === food.y) {
+                score += 10;
+                scoreElement.textContent = score;
+                if (score > highScore) { highScore = score; highScoreElement.textContent = highScore; localStorage.setItem('snakeHighScore', highScore); }
+                if (speed > 50) speed -= 2;
+                snake.push({...snake[snake.length - 1]});
+                createFood();
+            }
+        }
+
+        function createFood() {
+            food = { x: Math.floor(Math.random() * tileCount), y: Math.floor(Math.random() * tileCount) };
+            if (snake.some(p => p.x === food.x && p.y === food.y)) createFood();
+        }
+
+        function checkGameOver() {
+            const h = snake[0];
+            if (h.x < 0 || h.x >= tileCount || h.y < 0 || h.y >= tileCount) return true;
+            for (let i = 1; i < snake.length; i++) if (snake[i].x === h.x && snake[i].y === h.y) return true;
+            return false;
+        }
+
+        function handleGameOver() { gameActive = false; overlay.style.display = 'flex'; }
+
+        function resetGame() {
+            snake = [{x: 10, y: 10}]; createFood(); score = 0; scoreElement.textContent = score;
+            dx = 0; dy = 0; nextDx = 0; nextDy = 0; speed = 100; gameActive = true;
+            overlay.style.display = 'none'; clearTimeout(gameLoop); drawGame();
+        }
+
+        window.addEventListener('keydown', e => {
+            if (!gameActive && dx === 0 && dy === 0) { gameActive = true; drawGame(); }
+            switch(e.key.toLowerCase()) {
+                case 'arrowup': case 'w': if (dy !== 1) { nextDx = 0; nextDy = -1; } break;
+                case 'arrowdown': case 's': if (dy !== -1) { nextDx = 0; nextDy = 1; } break;
+                case 'arrowleft': case 'a': if (dx !== 1) { nextDx = -1; nextDy = 0; } break;
+                case 'arrowright': case 'd': if (dx !== -1) { nextDx = 1; nextDy = 0; } break;
+            }
+        });
+
+        clearCanvas();
+        ctx.fillStyle = 'white'; ctx.textAlign = 'center';
+        ctx.fillText('Nhấn phím bất kỳ để bắt đầu', canvas.width/2, canvas.height/2);
+    </script>
+</body>
+</html>
